@@ -227,6 +227,15 @@ class HeadlessController:
             self.log("No stats file found", 'INFO')
             return False
     
+
+    def full_scan(self):
+        """Execute a full scan of all available MikroTik versions"""
+        self.log("=== Starting Full Scan of All Available Versions ===", 'INFO')
+        self.log(f"Output directory: {self.output_dir}", 'INFO')
+        self.log(f"Download workers: {self.workers}", 'INFO')
+        self.engine.start_full_scan()
+        self.log("Full scan completed", 'INFO')
+
     def show_versions(self):
         """Display found versions"""
         versions_file = self.output_dir / 'found_versions.json'
@@ -259,6 +268,7 @@ Examples:
   python mikrotik_headless.py --scan-version 6.51
   python mikrotik_headless.py --check-rss
   python mikrotik_headless.py --stats
+  python mikrotik_headless.py --full-scan
   python mikrotik_headless.py --list-versions
   python mikrotik_headless.py --output /opt/mikrotik --workers 4 --daemon start
         '''
@@ -285,6 +295,9 @@ Examples:
     group.add_argument('--list-versions', action='store_true',
                       help='List all found versions')
     
+    group.add_argument('--full-scan', action='store_true',
+                      help='Perform a complete scan of all available versions')
+
     args = parser.parse_args()
     
     # Create output directory if it doesn't exist
@@ -328,9 +341,16 @@ Examples:
         controller.show_stats()
     elif args.list_versions:
         controller.show_versions()
+    elif args.full_scan:
+        controller.full_scan()
+
     else:
         parser.print_help()
 
 
 if __name__ == '__main__':
     main()
+
+
+
+
