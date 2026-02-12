@@ -233,7 +233,8 @@ class HeadlessController:
         self.log("=== Starting Full Scan of All Available Versions ===", 'INFO')
         self.log(f"Output directory: {self.output_dir}", 'INFO')
         self.log(f"Download workers: {self.workers}", 'INFO')
-        self.engine.start_full_scan()
+        self.log("Scanning versions 3.0 to 7.15...", 'INFO')
+        self.engine.scan_versions_range_and_download('3.0', '7.15', test_workers=self.workers)
         self.log("Full scan completed", 'INFO')
 
     def show_versions(self):
@@ -350,6 +351,7 @@ Examples:
 
 if __name__ == '__main__':
     main()
+
 
 
 
