@@ -229,14 +229,46 @@ class HeadlessController:
     
 
     def full_scan(self):
-        """Execute a full scan of all available MikroTik versions"""
+        """Execute a full scan of all available MikroTik versions with parallel download"""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        from pathlib import Path
+        
         self.log("=== Starting Full Scan of All Available Versions ===", 'INFO')
         self.log(f"Output directory: {self.output_dir}", 'INFO')
         self.log(f"Download workers: {self.workers}", 'INFO')
-        self.log("Scanning versions 3.30.1 to 7.20.x...", 'INFO')
-        self.log("This will check ~150k version candidates (may take 30-60 min)", 'INFO')
-        self.engine.scan_versions_range_and_download('3.30.1', '7.20', test_workers=self.workers)
-        self.log("Full scan completed - all found versions downloaded", 'INFO')
+        self.log("Scanning versions 3.30.1 to 7.20.x with PARALLEL downloads...", 'INFO')
+        self.log("As versions are found, they'll start downloading immediately", 'INFO')
+        
+        # Generate all candidate versions
+        start_parts = '3.30.1'.split('.')
+        end_parts = '7.20'.split('.')
+        start_major = int(start_parts[0])
+        start_minor = int(start_parts[1]) if len(start_parts) > 1 else 0
+        end_major = int(end_parts[0])
+        end_minor = int(end_parts[1]) if len(end_parts) > 1 else 50
+        
+        all_versions = self.engine.generate_all_version_numbers(start_major, start_minor, end_major, end_minor)
+        self.log(f"Generated {len(all_versions)} candidate versions", 'INFO')
+        
+        # Check versions and download as we find them (parallel)
+        found_count = 0
+        with ThreadPoolExecutor(max_workers=self.workers) as executor:
+            futures = {executor.submit(self.engine.check_version_exists, v): v for v in all_versions}
+            
+            for fut in as_completed(futures):
+                v = futures[fut]
+                try:
+                    if fut.result():
+                        found_count += 1
+                        self.log(f"Found version: {v} - Starting download...", 'FOUND')
+                        # Download immediately in background
+                        executor.submit(self.engine.process_version, v)
+                except Exception:
+                    pass
+        
+        self.log(f"Scan complete - Found and downloaded {found_count} versions", 'SUCCESS')
+        self.engine.save_found_versions()
+        self.engine.save_stats()
 
     def show_versions(self):
         """Display found versions"""
@@ -352,6 +384,8 @@ Examples:
 
 if __name__ == '__main__':
     main()
+
+
 
 
 
