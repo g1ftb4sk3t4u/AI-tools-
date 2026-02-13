@@ -228,12 +228,46 @@ class HeadlessController:
             return False
     
 
+    def check_existing_files(self):
+        """Check what files are already downloaded and report them"""
+        self.log("=== Checking Existing Downloads ===", 'INFO')
+        archive_path = Path(self.output_dir)
+        
+        if not archive_path.exists():
+            self.log("No archive directory found - starting fresh", 'INFO')
+            return 0
+        
+        total_files = 0
+        total_size = 0
+        versions_found = set()
+        
+        for version_dir in archive_path.glob('*'):
+            if version_dir.is_dir() and version_dir.name != '__pycache__':
+                versions_found.add(version_dir.name)
+                for arch_dir in version_dir.glob('*'):
+                    if arch_dir.is_dir():
+                        for file in arch_dir.glob('*'):
+                            if file.is_file():
+                                total_files += 1
+                                total_size += file.stat().st_size
+        
+        if total_files > 0:
+            size_gb = total_size / (1024**3)
+            self.log(f"Found {total_files} files already downloaded ({size_gb:.2f} GB)", 'INFO')
+            self.log(f"Versions already have: {', '.join(sorted(versions_found))}", 'INFO')
+            self.log("Resuming scan - will skip existing files...", 'INFO')
+        else:
+            self.log("No files downloaded yet - starting fresh", 'INFO')
+        
+        return total_files
+
     def full_scan(self):
         """Execute a full scan of all available MikroTik versions with parallel download"""
         from concurrent.futures import ThreadPoolExecutor, as_completed
         from pathlib import Path
         
         self.log("=== Starting Full Scan of All Available Versions ===", 'INFO')
+        self.check_existing_files()
         self.log(f"Output directory: {self.output_dir}", 'INFO')
         self.log(f"Download workers: {self.workers}", 'INFO')
         self.log("Scanning versions 3.30.1 to 7.20.x with PARALLEL downloads...", 'INFO')
@@ -332,6 +366,9 @@ Examples:
     group.add_argument('--full-scan', action='store_true',
                       help='Perform a complete scan of all available versions')
 
+    group.add_argument('--check-existing', action='store_true',
+                      help='Check and report existing downloads, then resume')
+
     args = parser.parse_args()
     
     # Create output directory if it doesn't exist
@@ -375,6 +412,9 @@ Examples:
         controller.show_stats()
     elif args.list_versions:
         controller.show_versions()
+    elif args.check_existing:
+        controller.check_existing_files()
+
     elif args.full_scan:
         controller.full_scan()
 
@@ -384,6 +424,9 @@ Examples:
 
 if __name__ == '__main__':
     main()
+
+
+
 
 
 
