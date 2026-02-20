@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+.env
+intel.db
+.DS_Store
+.idea/
+*.log
