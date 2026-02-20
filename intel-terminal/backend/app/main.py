@@ -133,8 +133,19 @@ app.add_middleware(
 # WebSocket router
 app.include_router(websocket_router)
 
-# Static files path - will be mounted after all routes
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "..", "frontend")
+# Static files path - check multiple locations for different deployment scenarios
+# Local dev: ../frontend, Docker/Railway: /app/static or ./static
+possible_frontend_paths = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "frontend"),  # Local dev
+    "/app/static",  # Railway/Docker
+    os.path.join(os.path.dirname(__file__), "..", "static"),  # Alternative
+    "./static",  # Current directory
+]
+frontend_path = None
+for path in possible_frontend_paths:
+    if os.path.exists(path):
+        frontend_path = path
+        break
 
 
 @app.get("/api/sources")
@@ -335,7 +346,7 @@ async def stats():
         db.close()
 
 # Mount static files LAST so API routes take precedence
-if os.path.exists(frontend_path):
+if frontend_path and os.path.exists(frontend_path):
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
 if __name__ == "__main__":
