@@ -4,12 +4,15 @@
  */
 
 // Dynamic API URL detection:
-// - In Docker/production: nginx proxies /api and /ws to backend
-// - In development: direct connection to backend on port 8001
-const isProduction = window.location.port === '' || window.location.port === '80' || window.location.port === '443';
-const API_BASE = isProduction ? '' : 'http://127.0.0.1:8001';
+// - In production (Railway, Docker, etc.): use relative URLs
+// - In development (localhost:3000 or file://): connect to backend on port 8001
+const isDevelopment = window.location.hostname === '127.0.0.1' || 
+                      window.location.hostname === 'localhost' ||
+                      window.location.protocol === 'file:';
+const API_BASE = isDevelopment && window.location.port !== '' ? 'http://127.0.0.1:8001' : '';
 const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const WS_URL = isProduction ? WS_PROTOCOL + '//' + window.location.host + '/ws' : 'ws://127.0.0.1:8001/ws';
+const WS_HOST = isDevelopment && window.location.port !== '' ? '127.0.0.1:8001' : window.location.host;
+const WS_URL = WS_PROTOCOL + '//' + WS_HOST + '/ws';
 
 // Application State
 let articles = [];
