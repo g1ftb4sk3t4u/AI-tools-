@@ -303,7 +303,7 @@ def get_articles(category: str = None, limit: int = 50):
                 "source_color": source_colors.get(a.source_id, "#55ff55"),
                 "category": cats.get(a.category_id, "Unknown"),
                 "category_id": a.category_id,
-                "published_at": a.timestamp.isoformat() if a.timestamp else None,
+                "published_at": a.timestamp.isoformat() + "Z" if a.timestamp else None,
                 "severity": "high" if a.severity >= 7 else "medium" if a.severity >= 4 else "low"
             }
             for a in articles

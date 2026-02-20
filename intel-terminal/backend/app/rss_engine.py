@@ -97,7 +97,7 @@ async def fetch_source(source: Source, db: Session):
                 "link": link,
                 "tags": tags,
                 "severity": severity,
-                "timestamp": article.timestamp.isoformat(),
+                "timestamp": article.timestamp.isoformat() + "Z",
                 "category": source.category_id
             })
             
