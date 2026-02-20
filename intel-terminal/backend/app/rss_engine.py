@@ -1,11 +1,26 @@
 import feedparser
 import logging
 from datetime import datetime
+from time import mktime
 from sqlalchemy.orm import Session
 from app.models import Article, Source
 from app.websocket import broadcast_article
 from app.utils import generate_article_hash, extract_keywords, sanitize_text
 from app.config import MAX_ARTICLES_PER_FEED
+
+
+def parse_feed_date(entry):
+    """Extract publication date from RSS entry"""
+    # Try various date fields RSS feeds use
+    for date_field in ['published_parsed', 'updated_parsed', 'created_parsed']:
+        time_struct = entry.get(date_field)
+        if time_struct:
+            try:
+                return datetime.fromtimestamp(mktime(time_struct))
+            except (ValueError, OverflowError):
+                continue
+    # Fallback to current time
+    return datetime.utcnow()
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +68,9 @@ async def fetch_source(source: Source, db: Session):
             # Extract tags and severity
             tags, severity = extract_keywords(title)
             
+            # Get actual publication date from feed
+            published_time = parse_feed_date(entry)
+            
             # Create article
             article = Article(
                 title=title,
@@ -64,7 +82,7 @@ async def fetch_source(source: Source, db: Session):
                 tags=",".join(tags),
                 severity=severity,
                 article_hash=article_hash,
-                timestamp=datetime.utcnow()
+                timestamp=published_time
             )
             
             db.add(article)
