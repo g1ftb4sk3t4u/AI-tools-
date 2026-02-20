@@ -136,16 +136,22 @@ app.include_router(websocket_router)
 # Static files path - check multiple locations for different deployment scenarios
 # Local dev: ../frontend, Docker/Railway: /app/static or ./static
 possible_frontend_paths = [
+    "/app/static",  # Railway/Docker (check first)
     os.path.join(os.path.dirname(__file__), "..", "..", "frontend"),  # Local dev
-    "/app/static",  # Railway/Docker
     os.path.join(os.path.dirname(__file__), "..", "static"),  # Alternative
     "./static",  # Current directory
 ]
 frontend_path = None
 for path in possible_frontend_paths:
+    abs_path = os.path.abspath(path)
+    logger.info(f"Checking frontend path: {abs_path}")
     if os.path.exists(path):
         frontend_path = path
+        logger.info(f"Found frontend at: {abs_path}")
         break
+
+if not frontend_path:
+    logger.warning("No frontend path found! Static files will not be served.")
 
 
 @app.get("/api/sources")
@@ -345,9 +351,26 @@ async def stats():
     finally:
         db.close()
 
+# Root endpoint fallback (only used if static files not found)
+@app.get("/")
+def root():
+    """Root endpoint - shows API info if frontend not mounted"""
+    return {
+        "service": "Intel Terminal API",
+        "status": "running",
+        "frontend_path": frontend_path,
+        "frontend_found": frontend_path is not None and os.path.exists(frontend_path) if frontend_path else False,
+        "docs": "/docs",
+        "health": "/api/health"
+    }
+
 # Mount static files LAST so API routes take precedence
 if frontend_path and os.path.exists(frontend_path):
+    logger.info(f"Mounting static files from: {frontend_path}")
+    # This will override the "/" route above
     app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+else:
+    logger.warning("Static files not mounted - frontend_path not found")
 
 if __name__ == "__main__":
     import uvicorn
